@@ -1,0 +1,46 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# python
+ml/.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# model weights (downloaded on first run)
+ml/weights/
+*.pth
+*.pt
+*.onnx
+*.safetensors
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# runtime artifacts
+storage/uploads/*
+storage/frames/*
+storage/outputs/*
+!storage/**/.gitkeep
+
+# builds
+dist/
+build/
+client/dist/
+server/dist/
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# editors / os
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

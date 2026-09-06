@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────────────
+# IMPORTANT: install PyTorch FIRST, separately, with the CUDA build that
+# matches your driver. Installing it from this file gets you the CPU-only
+# wheel, and the pipeline will silently run ~20x slower.
+#
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#
+# CPU-only machines can skip that and set FORCE_CPU=1 in .env.
+#
+# Lower bounds rather than exact pins: this stack spans torch, transformers,
+# OpenCV and onnxruntime, and hard-pinning all of them across a numpy major
+# version makes the resolver fail more often than it prevents breakage.
+# ─────────────────────────────────────────────────────────────────────
+
+# ── service ──────────────────────────────────────────────────────────
+fastapi>=0.115
+uvicorn[standard]>=0.34
+pydantic>=2.10
+pydantic-settings>=2.7
+python-dotenv>=1.0
+httpx>=0.28
+python-multipart>=0.0.20
+
+# ── AI ───────────────────────────────────────────────────────────────
+google-genai>=1.5
+
+# SAM 2 comes from HF transformers rather than the facebookresearch repo,
+# which requires a CUDA compilation step that routinely fails on Windows.
+# Sam2VideoModel landed in 4.56 — older versions fall back to the OpenCV
+# tracker and produce visibly worse masks.
+transformers>=4.56
+accelerate>=1.2
+safetensors>=0.5
+
+# ── vision ───────────────────────────────────────────────────────────
+numpy>=1.26
+opencv-contrib-python>=4.10
+pillow>=11.0
+scipy>=1.14
+
+# NOTE: LaMa deliberately has no package here. `simple-lama-inpainting` pins
+# pillow<10 while torchvision needs pillow 12, and it has not been released
+# since 0.1.2 — the two are unresolvable together. app/pipeline/lama.py runs
+# the same published TorchScript checkpoint directly instead, downloading it
+# on first use into ml/weights/.
+
+# Background removal for reference images and generated assets.
+rembg>=2.0.60
+onnxruntime>=1.19
+
+# Memory reporting between pipeline stages (optional but useful in logs).
+psutil>=6.0
