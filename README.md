@@ -17,20 +17,48 @@ cd LightnoteAI
 
 ## 2 · Install the prerequisites
 
-`npm run setup` checks for each of these and names the fix if one is missing,
-but it cannot install them for you.
+One command installs everything the project needs from the system: **Node 20+**,
+**Python 3.10+**, **ffmpeg** and **MongoDB**.
 
-| Requirement | Install |
+**Windows** (uses winget — expect UAC prompts):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
+```
+
+**macOS / Linux** (uses Homebrew or apt):
+
+```bash
+bash scripts/bootstrap.sh
+```
+
+Already have Node? `npm run bootstrap` does the same thing. Only missing tools
+are installed, so it is safe to re-run. Add `--skip-mongo` / `-SkipMongo` if you
+are using Atlas or `docker compose up -d` instead.
+
+> When it finishes, **open a new terminal**. PATH changes do not reach shells
+> that are already running.
+
+Two things the script cannot do for you:
+
+| | |
 |---|---|
-| **Node 20+** | [nodejs.org](https://nodejs.org) |
-| **Python 3.10+** | [python.org](https://python.org) — tick *Add to PATH* |
-| **ffmpeg + ffprobe** | `winget install Gyan.FFmpeg` / `brew install ffmpeg` |
-| **MongoDB** | `winget install MongoDB.Server` (runs as a service), or `docker compose up -d` |
-| **Gemini API key** | free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-| NVIDIA GPU, 6GB+ | *optional* — without one it falls back to CPU, several minutes per clip |
+| **Gemini API key** | Get a free one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — needed in step 4. |
+| NVIDIA GPU, 6GB+ | *Optional.* Without one the pipeline runs on CPU, several minutes per clip. |
 
-> After installing ffmpeg or MongoDB, **open a new terminal**. PATH changes do
-> not reach shells that are already running.
+<details>
+<summary>Prefer to install them by hand?</summary>
+
+| Requirement | Windows | macOS |
+|---|---|---|
+| Node 20+ | `winget install OpenJS.NodeJS.LTS` | `brew install node` |
+| Python 3.10+ | `winget install Python.Python.3.12` | `brew install python@3.12` |
+| ffmpeg + ffprobe | `winget install Gyan.FFmpeg` | `brew install ffmpeg` |
+| MongoDB | `winget install MongoDB.Server` | `brew tap mongodb/brew && brew install mongodb-community` |
+
+`docker compose up -d` works in place of a local MongoDB install.
+
+</details>
 
 ## 3 · Run the setup
 
@@ -102,6 +130,7 @@ npm run sample       # renders storage/uploads/sample-can.mp4
 
 | Command | |
 |---|---|
+| `npm run bootstrap` | Install the system prerequisites |
 | `npm run setup` | Guided first-time setup |
 | `npm run dev` | Start all three services |
 | `npm run doctor` | Verify every dependency |

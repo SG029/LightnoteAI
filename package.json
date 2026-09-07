@@ -12,6 +12,7 @@
     "dev:api": "npm --prefix server run dev",
     "dev:web": "npm --prefix client run dev",
     "dev:ml": "node scripts/dev-ml.mjs",
+    "bootstrap": "node scripts/bootstrap.mjs",
     "setup": "node scripts/setup.mjs",
     "sample": "node scripts/dev-ml.mjs --sample",
     "mongo:up": "docker compose up -d",

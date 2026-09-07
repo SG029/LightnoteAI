@@ -16,6 +16,9 @@ import net from "node:net";
 const run = promisify(execFile);
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const isWindows = process.platform === "win32";
+const bootstrap = isWindows
+  ? "powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1"
+  : "bash scripts/bootstrap.sh";
 
 const G = "\x1b[32m";
 const Y = "\x1b[33m";
@@ -69,19 +72,16 @@ console.log("\n  LightEdit setup\n  ──────────────�
 heading("Checking toolchain");
 
 const nodeMajor = Number(process.versions.node.split(".")[0]);
-if (nodeMajor < 20) fail(`Node ${process.versions.node} is too old`, "install Node 20 or newer");
+if (nodeMajor < 20) fail(`Node ${process.versions.node} is too old`, bootstrap);
 ok(`node v${process.versions.node}`);
 
 const pythonCmd = isWindows ? "python" : "python3";
 const pythonVersion = await probe(pythonCmd, ["--version"]);
-if (!pythonVersion) fail(`${pythonCmd} not found on PATH`, "install Python 3.10 or newer");
+if (!pythonVersion) fail(`${pythonCmd} not found on PATH`, bootstrap);
 ok(pythonVersion.toLowerCase());
 
 if (!(await probe("ffmpeg", ["-version"]))) {
-  fail(
-    "ffmpeg not found on PATH",
-    isWindows ? "winget install Gyan.FFmpeg  (then reopen this terminal)" : "brew install ffmpeg",
-  );
+  fail("ffmpeg not found on PATH", `${bootstrap}   (then reopen this terminal)`);
 }
 ok("ffmpeg");
 
@@ -186,12 +186,7 @@ if (await portOpen("127.0.0.1", 27017)) {
   ok("started the lightedit-mongo container");
 } else {
   warn("nothing listening on 27017");
-  console.log(
-    `      ${D}install:${X} ` +
-      (isWindows
-        ? "winget install MongoDB.Server   (installs and starts a Windows service)"
-        : "brew tap mongodb/brew && brew install mongodb-community && brew services start mongodb-community"),
-  );
+  console.log(`      ${D}install:${X} ${bootstrap}`);
   console.log(`      ${D}or:${X}      docker compose up -d`);
 }
 
