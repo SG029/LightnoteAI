@@ -47,7 +47,7 @@ Removal (*"Remove the bottle"*) works through the same pipeline.
 | **Node 20+** | |
 | **Python 3.10+** | |
 | **ffmpeg + ffprobe** | on `PATH` — `winget install Gyan.FFmpeg` / `brew install ffmpeg` |
-| **MongoDB** | `winget install MongoDB.Server` (installs a service), or `docker compose up -d` |
+| **MongoDB** | `winget install MongoDB.Server` — installs and runs as a Windows service. `docker compose up -d` also works. |
 | **Gemini API key** | free at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
 | NVIDIA GPU, 6GB+ | *optional* — without one it falls back to CPU, several minutes per clip |
 
@@ -170,9 +170,17 @@ Each replacement tier falls through to the next rather than failing the job:
 
 | Tier | Method | When |
 |---|---|---|
-| `gemini_keyframe` | Gemini's image model renders the replacement, conditioned on a crop of the real scene for lighting and angle — plus your reference image if supplied | default |
-| `reference_composite` | Your reference image, background removed, used directly | image generation unavailable or out of quota |
+| `gemini_keyframe` | Gemini's image model renders the replacement, conditioned on a crop of the real scene for lighting and angle — plus your reference image if supplied | best quality, but **unavailable on a free API key** (see below) |
+| `reference_composite` | Your reference image, background removed, used directly | whenever you supply a reference image |
+| `generated_composite` | Pollinations renders the replacement from text — keyless, no quota | no reference image supplied |
 | `removal_only` | No asset — the object is erased and the background reconstructed | nothing else worked |
+
+> **On the free Gemini tier, image generation is not available.** Both
+> `gemini-2.5-flash-image` and `gemini-3.1-flash-image` return `429` with
+> `limit: 0` — which is "not available to this tier", not throttling. That is
+> precisely why tier 3 exists: Pollinations needs no key, so replacement still
+> works end to end without billing. Text generation and grounding are
+> unaffected and run on Gemini as normal.
 
 The tier that actually ran is recorded on the job and shown in the UI, so a
 degraded result is labelled rather than passed off as a full success.
@@ -264,7 +272,7 @@ All three services read one `.env` at the repository root.
 |---|---|---|
 | `GEMINI_API_KEY` | — | **Required.** |
 | `GEMINI_TEXT_MODEL` | `gemini-3.5-flash` | Intent parsing + object grounding |
-| `GEMINI_IMAGE_MODEL` | `gemini-3.1-flash-image` | Replacement asset generation |
+| `GEMINI_IMAGE_MODEL` | `gemini-2.5-flash-image` | Replacement asset generation (tier 1; needs a paid key) |
 | `MONGODB_URI` | `mongodb://localhost:27017/lightedit` | |
 | `PORT` | `4000` | Express |
 | `ML_SERVICE_URL` | `http://localhost:8000` | FastAPI worker |
@@ -298,11 +306,13 @@ ml/app/
   main.py           FastAPI surface
   gemini_client.py  shared client + response helpers
   progress.py       stage timing + webhook emitter
+  memory.py         CUDA thread binding + inter-stage cleanup
   pipeline/
     orchestrator.py  the six stages, in order
     grounding.py     Gemini spatial grounding
     segment.py       SAM 2, with OpenCV fallback
     lama.py          LaMa TorchScript runner
+    pollinations.py  keyless fallback image generation
     inpaint.py       per-frame erasure
     assets.py        the replacement strategy ladder
     compose.py       tracked compositing + mask preview
@@ -344,7 +354,9 @@ Stated plainly, because these are design boundaries rather than bugs:
 | `Gemini rejected the API key` | `GEMINI_API_KEY` missing or wrong in `.env`. Verify with `curl "localhost:4000/api/health?deep=1"`. |
 | `The video processing service is unreachable` | The Python worker isn't running. `npm run dev:ml`, and check port 8000. |
 | `Could not find "X" in the video` | Grounding found nothing confidently. Describe the object by appearance, or use a clip where it's larger and unoccluded. |
-| Result is a removal, not a replacement | The strategy ladder fell to `removal_only` — usually image-generation quota. Supply a reference image. |
+| Result is a removal, not a replacement | The ladder fell all the way to `removal_only` — both the reference image and Pollinations were unavailable. Supply a reference image. |
+| `mongod` dies mid-render, API exits with `ECONNREFUSED` | The host ran out of **commit** memory, not RAM. Windows with the page file disabled caps commit at physical RAM, and Mongo + Node + a CUDA process will not fit. Set the page file to system-managed (`sysdm.cpl` → Advanced → Performance → Advanced → Virtual memory) and reboot. Lowering `TARGET_HEIGHT` to `480` also helps. |
+| `CUDA error: unknown error` right after "SAM 2 loaded" | A CUDA context established on one thread being used from another. Handled by `memory.bind_cuda_thread()`; if you add a new GPU stage, call it first. |
 | CUDA out of memory | Lower `TARGET_HEIGHT` to `480`, or set `FORCE_CPU=1`. |
 | Tracking quality is poor | Check `/api/jobs/:id/mask`. A `backend: opencv-csrt` in the stage detail means SAM 2 failed to load — see the worker log. |
 
