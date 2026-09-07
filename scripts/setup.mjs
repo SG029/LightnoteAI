@@ -42,7 +42,11 @@ function fail(text, fix) {
 /** Streams a long-running command so the user sees progress, not a hang. */
 function stream(command, args, cwd = root) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit", shell: isWindows });
+    // npm and docker on Windows are .cmd shims, so they need a shell. An
+    // absolute path must not go through one: cmd.exe splits the command on
+    // the first space, so a checkout under "C:\D Drive\..." fails as 'C:\D'.
+    const useShell = isWindows && !command.includes("\\");
+    const child = spawn(command, args, { cwd, stdio: "inherit", shell: useShell });
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`${command} exited with ${code}`)),
     );
