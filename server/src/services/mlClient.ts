@@ -1,7 +1,7 @@
 import { config } from "../config.js";
 import { AppError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
-import type { EditPlan } from "../types.js";
+import type { EditPlan, Strategy } from "../types.js";
 
 export interface ProcessRequest {
   jobId: string;
@@ -20,7 +20,7 @@ export interface ProcessResult {
   outputPath: string;
   maskPreviewPath: string | null;
   assetPath: string | null;
-  strategy: "gemini_keyframe" | "reference_composite" | "removal_only";
+  strategy: Strategy;
 }
 
 /**

@@ -132,7 +132,13 @@ const jobSchema = new Schema<IJob>(
 
     strategy: {
       type: String,
-      enum: ["gemini_keyframe", "reference_composite", "removal_only", null],
+      enum: [
+        "gemini_keyframe",
+        "reference_composite",
+        "generated_composite",
+        "removal_only",
+        null,
+      ],
       default: null,
     },
 

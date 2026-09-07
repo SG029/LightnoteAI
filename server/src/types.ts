@@ -27,7 +27,11 @@ export type JobStatus = "queued" | "parsing" | "processing" | "completed" | "fai
  * Recorded so the API can be honest about degraded results instead of
  * silently returning a lower-quality edit.
  */
-export type Strategy = "gemini_keyframe" | "reference_composite" | "removal_only";
+export type Strategy =
+  | "gemini_keyframe"
+  | "reference_composite"
+  | "generated_composite"
+  | "removal_only";
 
 /**
  * Structured interpretation of the user's natural-language instruction.

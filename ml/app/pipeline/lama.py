@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from ..config import resolve_device, settings
+from ..memory import bind_cuda_thread
 
 log = logging.getLogger("lightedit.lama")
 
@@ -91,6 +92,8 @@ def inpaint(image_rgb: np.ndarray, mask: np.ndarray) -> np.ndarray | None:
     `image_rgb` is HxWx3 uint8; `mask` is HxW uint8 where non-zero marks the
     region to remove. Returns HxWx3 uint8, or None if the model is unavailable.
     """
+    bind_cuda_thread()
+
     model = load()
     if model is None:
         return None

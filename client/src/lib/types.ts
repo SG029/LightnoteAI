@@ -30,11 +30,17 @@ export const STAGE_HINTS: Record<StageName, string> = {
 
 export type StageStatus = "pending" | "running" | "done" | "skipped" | "failed";
 export type JobStatus = "queued" | "parsing" | "processing" | "completed" | "failed";
-export type Strategy = "gemini_keyframe" | "reference_composite" | "removal_only";
+export type Strategy =
+  | "gemini_keyframe"
+  | "reference_composite"
+  | "generated_composite"
+  | "removal_only";
 
+/** Shown on the result so a degraded run is labelled, never passed off. */
 export const STRATEGY_LABELS: Record<Strategy, string> = {
-  gemini_keyframe: "AI-generated replacement",
+  gemini_keyframe: "Scene-matched AI replacement",
   reference_composite: "Reference image composite",
+  generated_composite: "AI-generated replacement",
   removal_only: "Removal only — no replacement built",
 };
 

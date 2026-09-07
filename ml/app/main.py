@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 
 from .config import resolve_device, settings
 from .gemini_client import GeminiError
+from .memory import init_cuda
 from .pipeline import lama, video
 from .pipeline.orchestrator import PipelineError, run
 from .progress import ProgressReporter
@@ -35,11 +36,17 @@ log = logging.getLogger("lightedit")
 async def lifespan(_app: FastAPI):
     device = resolve_device()
     log.info("ML worker starting — device=%s", device)
+
     if device == "cpu":
         log.warning("Running on CPU. Expect several minutes per clip.")
-    # Models load lazily on the first job rather than at boot: startup stays
-    # fast, and a machine that only ever serves /health never downloads 2GB
-    # of weights it will not use.
+    else:
+        # Create the CUDA context here, on the main thread. Jobs run in a
+        # threadpool worker, and letting the context be created there fails
+        # on Windows with an opaque "CUDA error: unknown error".
+        init_cuda()
+
+    # Model weights still load lazily on first use: startup stays fast, and a
+    # machine that only ever serves /health never downloads 2GB it won't use.
     yield
     log.info("ML worker stopped")
 

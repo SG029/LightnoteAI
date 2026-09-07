@@ -12,7 +12,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Operation = Literal["replace", "remove"]
-Strategy = Literal["gemini_keyframe", "reference_composite", "removal_only"]
+Strategy = Literal[
+    "gemini_keyframe",
+    "reference_composite",
+    "generated_composite",
+    "removal_only",
+]
 StageName = Literal["intent", "ground", "track", "clean", "compose", "encode"]
 
 

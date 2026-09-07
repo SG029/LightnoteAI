@@ -7,11 +7,18 @@ The strategy ladder, best first:
                             lighting, colour temperature and camera angle
                             match. A user-supplied reference image is passed
                             in too, so the output is that product, harmonised
-                            to this scene.
+                            to this scene. Unavailable on a free API tier,
+                            where the image models report a quota of zero.
   2. reference_composite  — the reference image is cut out and used directly.
                             No harmonisation, so it can look pasted on, but it
-                            needs no image-generation quota.
-  3. (none)               — no asset; the caller falls back to removal only.
+                            needs no image-generation quota. Preferred over
+                            tier 3 whenever a reference exists: the user told
+                            us exactly what they want, so generating something
+                            approximate instead would be wrong.
+  3. generated_composite  — Pollinations renders the replacement from text.
+                            Keyless, so it works where tier 1 cannot, but it
+                            sees no scene context and so cannot match lighting.
+  4. (none)               — no asset; the caller falls back to removal only.
 
 Every path ends at the same artifact: a tight RGBA cut-out. Compositing does
 not care how it was produced, which is what keeps the ladder cheap.
@@ -29,6 +36,7 @@ import numpy as np
 from ..config import settings
 from ..gemini_client import GeminiError, call, extract_image, image_part
 from ..schemas import EditPlan, Strategy
+from . import pollinations
 from .grounding import Grounding
 
 log = logging.getLogger("lightedit.assets")
@@ -228,5 +236,22 @@ def build(
         log.warning("Reference image could not be cut out")
 
     # ── Tier 3 ──────────────────────────────────────────────────────────
+    data = pollinations.generate(pollinations.build_prompt(plan.replacement))
+    if data:
+        raw_path = out_dir / "asset_pollinations.png"
+        raw_path.write_bytes(data)
+        image = cv2.imread(str(raw_path))
+
+        if image is not None:
+            cut = _cutout(image)
+            if cut is not None:
+                bgr, alpha = cut
+                path = out_dir / "asset.png"
+                cv2.imwrite(str(path), np.dstack([bgr, alpha]))
+                log.info("asset via generated_composite, %dx%d", bgr.shape[1], bgr.shape[0])
+                return ReplacementAsset(bgr, alpha, path, "generated_composite")
+            log.warning("Generated asset had no separable subject")
+
+    # ── Tier 4 ──────────────────────────────────────────────────────────
     log.warning("No replacement asset could be built — job degrades to removal only")
     return None

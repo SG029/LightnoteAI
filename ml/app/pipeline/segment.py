@@ -29,6 +29,7 @@ import cv2
 import numpy as np
 
 from ..config import resolve_device, settings
+from ..memory import bind_cuda_thread
 from .grounding import Grounding
 
 log = logging.getLogger("lightedit.segment")
@@ -187,6 +188,9 @@ def _track_sam2(
     clip length. Box prompts are used for re-seeding rather than mask prompts
     because the box coordinate convention is verified and unambiguous.
     """
+    # Must happen before any CUDA work on this threadpool thread.
+    bind_cuda_thread()
+
     loaded = _load_sam2()
     if loaded is None:
         return None

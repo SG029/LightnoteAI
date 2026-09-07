@@ -20,6 +20,48 @@ import logging
 log = logging.getLogger("lightedit.memory")
 
 
+def bind_cuda_thread() -> None:
+    """Binds the calling thread to the CUDA device.
+
+    The pipeline runs in a uvicorn threadpool worker, not the main thread.
+    On Windows a CUDA context established on one thread is not automatically
+    current on another, and the symptom is a bare `RuntimeError: CUDA error:
+    unknown error` from whatever kernel happens to launch first — with a
+    stack trace pointing at an innocent op, because kernel errors surface
+    asynchronously.
+
+    Setting the device explicitly on entry makes the context current for this
+    thread. Cheap enough to call at the top of every GPU stage.
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.set_device(0)
+    except Exception as exc:  # noqa: BLE001 — CPU path must still work
+        log.debug("could not bind CUDA thread: %s", exc)
+
+
+def init_cuda() -> None:
+    """Creates the CUDA context up front, on the main thread.
+
+    Called during startup so the first job does not pay context creation on a
+    threadpool worker — which is exactly the situation that fails above.
+    """
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.init()
+            torch.cuda.set_device(0)
+            # A trivial allocation forces the context to actually materialise;
+            # is_available() alone does not create one.
+            torch.zeros(1, device="cuda")
+            log.info("CUDA context initialised on %s", torch.cuda.get_device_name(0))
+    except Exception as exc:  # noqa: BLE001
+        log.warning("CUDA init failed (%s) — pipeline will use CPU", exc)
+
+
 def release() -> None:
     """Drops freed allocations back to the OS. Safe to call anywhere."""
     gc.collect()
